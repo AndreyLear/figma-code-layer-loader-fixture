@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Loader prototype v1</title>
+<style>body{font:20px system-ui;padding:48px;color:#17325a;background:#edf5ff}h1{font-size:48px}button{font:inherit;padding:12px 24px}</style>
+<h1>LOADER v1</h1>
+<p>Synthetic HTML fixture loaded directly from GitHub.</p>
+<button id="increment">Increment</button>
+<p id="counter">Count 0</p>
+<script>
+let count = 0;
+function report() { parent.postMessage({ type: 'loader-fixture', version: 'LOADER v1', count }, '*'); }
+document.querySelector('#increment').onclick = () => {
+  document.querySelector('#counter').textContent = `Count ${++count}`;
+  report();
+};
+report();
+</script>
+</html>
