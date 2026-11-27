@@ -2,19 +2,52 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Loader prototype v2</title>
+<title>Loader prototype v3 bridge</title>
 <style>body{font:20px system-ui;padding:48px;color:#17325a;background:#e7fff0}h1{font-size:48px}button{font:inherit;padding:12px 24px}</style>
-<h1>LOADER v2</h1>
+<h1>LOADER v3</h1>
 <p>Synthetic HTML fixture loaded directly from GitHub.</p>
 <button id="increment">Increment</button>
 <p id="counter">Count 0</p>
 <script>
 let count = 0;
-function report() { parent.postMessage({ type: 'loader-fixture', version: 'LOADER v2', count }, '*'); }
+function report() { parent.postMessage({ type: 'loader-fixture', version: 'LOADER v3', count }, '*'); }
 document.querySelector('#increment').onclick = () => {
   document.querySelector('#counter').textContent = `Count ${++count}`;
   report();
 };
 report();
+
+// Non-secret transport probe only. This handshake is NOT authentication.
+const bridgeChannel = 'figma-prototype-bridge-probe-20261127';
+const bridgeSession = Math.random().toString(36).slice(2,10);
+const bridgePeers = new Map();
+let demoFrame;
+let activePeer;
+window.addEventListener('message', event => {
+  const message = event.data;
+  if (!message || message.channel !== bridgeChannel) return;
+  if (message.kind === 'hello' && typeof message.nonce === 'string') {
+    bridgePeers.set(event.source, message.nonce);
+    event.source.postMessage({ channel: bridgeChannel, kind: 'ready', nonce: message.nonce, session: bridgeSession, fixture: 'LOADER v3 synthetic receiver' }, '*');
+  }
+  if (message.kind === 'render-demo' && bridgePeers.get(event.source) === message.nonce && typeof message.html === 'string' && message.html.includes('BRIDGE DEMO v1')) {
+    activePeer = { ref: event.source, nonce: message.nonce };
+    if (!demoFrame) {
+      demoFrame = document.createElement('iframe');
+      demoFrame.title = 'Synthetic bridge HTML';
+      demoFrame.setAttribute('sandbox', 'allow-scripts');
+      demoFrame.style.cssText = 'width:100%;height:250px;border:2px solid #07945c';
+      document.body.appendChild(demoFrame);
+    }
+    demoFrame.srcdoc = message.html;
+  }
+  if (demoFrame && event.source === demoFrame.contentWindow && message.kind === 'demo-ran' && activePeer && message.nonce === activePeer.nonce) {
+    activePeer.ref.postMessage({channel: bridgeChannel, nonce: activePeer.nonce, kind:'rendered', version: message.version, session:bridgeSession}, '*');
+  }
+});
+const readyLabel = document.createElement('p');
+readyLabel.textContent = 'Synthetic bridge receiver ready — ' + bridgeSession;
+document.body.appendChild(readyLabel);
+
 </script>
 </html>
